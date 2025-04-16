@@ -96,6 +96,38 @@ func checkForXClip() {
 	}
 }
 
+func checkClipboard(selection string) (string, error) {
+	var o, oErr = exec.Command("xclip", "-o", "-selection", selection).Output()
+	if oErr != nil {
+		notify(&Notify{
+			Message: fmt.Sprintf("Произошла ошибка при просмотре выделенного содержимого: %s", oErr.Error()),
+			Icon:    "failed",
+		})
+
+		return "", oErr
+	}
+
+	return string(o), nil
+}
+
+func formatString(str string) string {
+	str = strings.Trim(str, "\n")
+	str = strings.Trim(str, " ")
+	str = strings.Replace(str, "\r", "", -1)
+
+	for {
+		var findTabSpaces = strings.Index(str, "\n\n")
+
+		if findTabSpaces == -1 {
+			break
+		}
+
+		str = strings.Replace(str, "\n\n", "\n", -1)
+	}
+
+	return str
+}
+
 func startKeyboard() {
 	var err = _hotkey.Register()
 	if err != nil {
@@ -108,26 +140,28 @@ func startKeyboard() {
 
 	for {
 		<-_hotkey.Keydown()
-		var o, oErr = exec.Command("xclip", "-o", "-selection", "primary").Output()
-		if oErr != nil {
-			notify(&Notify{
-				Message: fmt.Sprintf("Произошла ошибка при просмотре выделенного содержимого: %s", oErr.Error()),
-				Icon:    "failed",
-			})
-
-			continue
+		var str, strErr = checkClipboard("primary")
+		if strErr != nil {
+			return
 		}
 
-		var str = string(o)
 		if strings.TrimSpace(str) == "" {
-			notify(&Notify{
-				Message: "Ничего не выделено для перевода.",
-				Icon:    "failed",
-			})
+			str, strErr = checkClipboard("clipboard")
+			if strErr != nil {
+				return
+			}
+
+			if strings.TrimSpace(str) == "" {
+				notify(&Notify{
+					Message: "В буфере обмена - пусто.",
+					Icon:    "failed",
+				})
+			}
 
 			continue
 		}
 
+		str = formatString(str)
 		handler(str)
 	}
 }
