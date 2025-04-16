@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 	"unicode/utf8"
 )
@@ -37,17 +38,21 @@ func Generate(text string) (string, error) {
 		return "", strErr
 	}
 
+	var convertedStr = strings.TrimSpace(strings.Trim(string(str), "`"))
 	var finalStr string
-
 	var decoded = make(map[string]any)
-	json.Unmarshal(str, &decoded)
+	json.Unmarshal([]byte(convertedStr), &decoded)
 
-	if decoded["translation"] != nil {
+	switch {
+	case decoded["translation"] != nil:
 		finalStr = decoded["translation"].(string)
-	} else {
-		finalStr = string(str)
+	case decoded["response"] != nil:
+		finalStr = decoded["response"].(string)
+	default:
+		finalStr = convertedStr
 	}
 
 	finalStr, _ = url.QueryUnescape(finalStr)
+
 	return finalStr, nil
 }
