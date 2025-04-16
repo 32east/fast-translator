@@ -10,6 +10,7 @@ import (
 	"golang.design/x/hotkey/mainthread"
 	"log"
 	"os/exec"
+	"runtime"
 	"strings"
 )
 
@@ -242,6 +243,7 @@ func start() {
 }
 
 func init() {
+	runtime.GOMAXPROCS(1)
 	initLangs()
 }
 
