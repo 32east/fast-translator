@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/gen2brain/beeep"
 	"github.com/getlantern/systray"
@@ -23,6 +24,7 @@ const apiURL = "https://text.pollinations.ai"
 var _hotkey = hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyC)
 var defaultNativeLanguage, prompt string
 var checkboxes []*systray.MenuItem
+var lastClipboard []byte
 
 var Languages = []string{
 	"Английский",
@@ -86,6 +88,10 @@ func handler(data string) {
 }
 
 func checkForXClip() {
+	if runtime.GOOS == "windows" {
+		return
+	}
+
 	var output = exec.Command("xclip").Run()
 	if output != nil && output.Error() == packetNotFound {
 		log.Println("Пакет XClip не найден, пытаемся установить...")
@@ -98,6 +104,10 @@ func checkForXClip() {
 }
 
 func checkClipboard(selection string) (string, error) {
+	if runtime.GOOS == "windows" {
+		return "", nil
+	}
+
 	var o, oErr = exec.Command("xclip", "-o", "-selection", selection).Output()
 	if oErr != nil {
 		notify(&Notify{
@@ -147,10 +157,7 @@ func startKeyboard() {
 		}
 
 		if strings.TrimSpace(str) == "" {
-			str, strErr = checkClipboard("clipboard")
-			if strErr != nil {
-				return
-			}
+			str = string(lastClipboard)
 
 			if strings.TrimSpace(str) == "" {
 				notify(&Notify{
@@ -229,6 +236,13 @@ func initExitButton() {
 	}()
 }
 
+func startClipboardWatcher() {
+	var clipboardChannel = clipboard.Watch(context.Background(), clipboard.FmtText)
+	for {
+		lastClipboard = <-clipboardChannel
+	}
+}
+
 func start() {
 	systray.SetIcon(icon.Data)
 	systray.SetTitle("Fast-Translator")
@@ -238,7 +252,12 @@ func start() {
 	initExitButton()
 
 	startClipboard()
-	checkForXClip()
+
+	if runtime.GOOS != "windows" {
+		checkForXClip()
+	}
+
+	go startClipboardWatcher()
 	go mainthread.Init(startKeyboard)
 }
 
