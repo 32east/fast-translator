@@ -17,14 +17,13 @@ import (
 )
 
 // https://text.pollinations.ai/models
-const model = "openai"
-const nativeLanguage = "Русский"
 const packetNotFound = "exec: \"xclip\": executable file not found in $PATH"
-const apiURL = "https://text.pollinations.ai"
 
 var _hotkey = hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyC)
-var defaultNativeLanguage, prompt string
-var checkboxes []*systray.MenuItem
+var selectedLanguage, selectedModel, prompt string
+var languageCheckBoxes []*systray.MenuItem
+var modelsCheckBoxes []*systray.MenuItem
+
 var lastClipboard []byte
 
 var Languages = []string{
@@ -183,8 +182,8 @@ func startClipboard() {
 }
 
 func initLangs() {
-	if defaultNativeLanguage == "" {
-		defaultNativeLanguage = nativeLanguage
+	if selectedLanguage == "" {
+		selectedLanguage = defaultLanguage
 	}
 
 	prompt = `
@@ -194,36 +193,81 @@ That is, if a person writes only in lowercase letters, then preserve the style.
 If there is an unintelligible symbol - skip it.
 Translate into:
 
-If the language of the given text is ` + defaultNativeLanguage + ` → translate to English.
-Otherwise, translate to ` + defaultNativeLanguage + `.
+If the language of the given text is ` + selectedLanguage + ` → translate to English.
+Otherwise, translate to ` + selectedLanguage + `.
 `
 }
 
-func initLanguageSelector() {
-	checkboxes = []*systray.MenuItem{}
+type InputCheckboxes struct {
+	Array           []string
+	CheckboxesArray []*systray.MenuItem
+	DefaultVariable string
+	Variable        *string
+}
 
-	for _, lang := range Languages {
+func createCheckboxes(input *InputCheckboxes) {
+	for _, lang := range input.Array {
 		var checkBox = systray.AddMenuItemCheckbox(lang, lang, false)
-		checkboxes = append(checkboxes, checkBox)
+		input.CheckboxesArray = append(input.CheckboxesArray, checkBox)
 
 		go func() {
 			for {
 				<-checkBox.ClickedCh
 
-				for _, checkbox := range checkboxes {
+				for _, checkbox := range input.CheckboxesArray {
 					checkbox.Uncheck()
 				}
 
 				checkBox.Check()
-				defaultNativeLanguage = lang
+				*input.Variable = lang
 				initLangs()
 			}
 		}()
 
-		if lang == nativeLanguage {
+		if lang == input.DefaultVariable {
 			checkBox.Check()
 		}
 	}
+}
+
+func initLanguageSelector() {
+	languageCheckBoxes, modelsCheckBoxes = []*systray.MenuItem{}, []*systray.MenuItem{}
+
+	var mdls, err = GetAvailableModels()
+	var availableModels []string
+	var count = 0
+
+	if err == nil {
+		for _, model := range mdls {
+			for _, input := range model.OutputModalities {
+				if input == "text" {
+					availableModels = append(availableModels, model.Name)
+					count++
+					break
+				}
+			}
+
+			if count > 5 {
+				break
+			}
+		}
+	}
+
+	createCheckboxes(&InputCheckboxes{
+		Array:           availableModels,
+		CheckboxesArray: modelsCheckBoxes,
+		DefaultVariable: defaultModel,
+		Variable:        &selectedModel,
+	})
+
+	systray.AddSeparator()
+
+	createCheckboxes(&InputCheckboxes{
+		Array:           Languages,
+		CheckboxesArray: languageCheckBoxes,
+		DefaultVariable: defaultLanguage,
+		Variable:        &selectedLanguage,
+	})
 }
 
 func initExitButton() {
