@@ -19,7 +19,6 @@ func Generate(text string) (string, error) {
 	}
 
 	req.Header.Set("Connection", "Keep-Alive")
-
 	var minTime = math.Max(float64(utf8.RuneCountInString(text)/23), 5)
 	var client = &http.Client{
 		Timeout: time.Duration(minTime * 1000 * 1000 * 1000),
