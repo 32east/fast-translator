@@ -12,8 +12,8 @@ import (
 	"unicode/utf8"
 )
 
+// https://text.pollinations.ai/models
 const defaultModel = "openai"
-const defaultLanguage = "Русский"
 const apiURL = "https://text.pollinations.ai"
 
 type AvailableModel struct {

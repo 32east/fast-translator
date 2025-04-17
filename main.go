@@ -10,43 +10,51 @@ import (
 	"golang.design/x/clipboard"
 	"golang.design/x/hotkey"
 	"golang.design/x/hotkey/mainthread"
+	"golang.org/x/text/language"
+	"golang.org/x/text/language/display"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 )
 
-// https://text.pollinations.ai/models
 const packetNotFound = "exec: \"xclip\": executable file not found in $PATH"
 
 var _hotkey = hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyC)
 var selectedLanguage, selectedModel, prompt string
 var languageCheckBoxes []*systray.MenuItem
 var modelsCheckBoxes []*systray.MenuItem
-
 var lastClipboard []byte
 
-var Languages = []string{
-	"Английский",
-	"Испанский",
-	"Китайский",
-	"Французский",
-	"Немецкий",
-	"Русский",
-	"Португальский",
-	"Арабский",
-	"Японский",
-	"Хинди",
-	"Корейский",
-	"Итальянский",
-	"Турецкий",
-	"Голландский",
-	"Польский",
-	"Украинский",
-	"Вьетнамский",
-	"Тайский",
-	"Иврит",
-	"Индонезийский",
+type Language struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
+
+var s = display.Russian.Languages()
+var defaultLanguage = s.Name(language.MustParse("ru_RU"))
+
+var Languages = []Language{
+	{Code: "en_US", Name: s.Name(language.MustParse("en_US"))}, // Английский
+	{Code: "es_ES", Name: s.Name(language.MustParse("es_ES"))}, // Испанский
+	{Code: "zh_CN", Name: s.Name(language.MustParse("zh_CN"))}, // Китайский (упрощённый)
+	{Code: "fr_FR", Name: s.Name(language.MustParse("fr_FR"))}, // Французский
+	{Code: "de_DE", Name: s.Name(language.MustParse("de_DE"))}, // Немецкий
+	{Code: "ru_RU", Name: s.Name(language.MustParse("ru_RU"))}, // Русский
+	{Code: "pt_PT", Name: s.Name(language.MustParse("pt_PT"))}, // Португальский
+	{Code: "ar_SA", Name: s.Name(language.MustParse("ar_SA"))}, // Арабский (Саудовская Аравия)
+	{Code: "ja_JP", Name: s.Name(language.MustParse("ja_JP"))}, // Японский
+	{Code: "hi_IN", Name: s.Name(language.MustParse("hi_IN"))}, // Хинди
+	{Code: "ko_KR", Name: s.Name(language.MustParse("ko_KR"))}, // Корейский
+	{Code: "it_IT", Name: s.Name(language.MustParse("it_IT"))}, // Итальянский
+	{Code: "tr_TR", Name: s.Name(language.MustParse("tr_TR"))}, // Турецкий
+	{Code: "nl_NL", Name: s.Name(language.MustParse("nl_NL"))}, // Голландский
+	{Code: "pl_PL", Name: s.Name(language.MustParse("pl_PL"))}, // Польский
+	{Code: "uk_UA", Name: s.Name(language.MustParse("uk_UA"))}, // Украинский
+	{Code: "vi_VN", Name: s.Name(language.MustParse("vi_VN"))}, // Вьетнамский
+	{Code: "th_TH", Name: s.Name(language.MustParse("th_TH"))}, // Тайский
+	{Code: "he_IL", Name: s.Name(language.MustParse("he_IL"))}, // Иврит
+	{Code: "id_ID", Name: s.Name(language.MustParse("id_ID"))}, // Индонезийский
 }
 
 type Notify struct {
@@ -186,16 +194,13 @@ func initLangs() {
 		selectedLanguage = defaultLanguage
 	}
 
-	prompt = `
-You are not supposed to write anything except for the translation of the given text.
-Preserve absolutely all characters, letter writing style, symbols, font, punctuation marks, letters - EVERYTHING must be preserved!
-That is, if a person writes only in lowercase letters, then preserve the style.
-If there is an unintelligible symbol - skip it.
-Translate into:
-
-If the language of the given text is ` + selectedLanguage + ` → translate to English.
-Otherwise, translate to ` + selectedLanguage + `.
-`
+	prompt = fmt.Sprintf(`
+You only output the translation—nothing else.
+Preserve every character, style, and symbol.
+Detect the source language code:
+  • If it is "%[1]s", translate to English ("en").
+  • Otherwise, translate into "%[1]s".
+`, selectedLanguage)
 }
 
 type InputCheckboxes struct {
@@ -203,6 +208,7 @@ type InputCheckboxes struct {
 	CheckboxesArray []*systray.MenuItem
 	DefaultVariable string
 	Variable        *string
+	OnCheck         func(variable string)
 }
 
 func createCheckboxes(input *InputCheckboxes) {
@@ -219,8 +225,7 @@ func createCheckboxes(input *InputCheckboxes) {
 				}
 
 				checkBox.Check()
-				*input.Variable = lang
-				initLangs()
+				input.OnCheck(lang)
 			}
 		}()
 
@@ -257,16 +262,33 @@ func initLanguageSelector() {
 		Array:           availableModels,
 		CheckboxesArray: modelsCheckBoxes,
 		DefaultVariable: defaultModel,
-		Variable:        &selectedModel,
+		OnCheck: func(model string) {
+			selectedModel = model
+		},
+		Variable: &selectedModel,
 	})
 
 	systray.AddSeparator()
 
+	var arrLanguages []string
+	for _, normalName := range Languages {
+		arrLanguages = append(arrLanguages, normalName.Name)
+	}
+
 	createCheckboxes(&InputCheckboxes{
-		Array:           Languages,
+		Array:           arrLanguages,
 		CheckboxesArray: languageCheckBoxes,
 		DefaultVariable: defaultLanguage,
-		Variable:        &selectedLanguage,
+		OnCheck: func(language string) {
+			for _, value := range Languages {
+				if value.Name == language {
+					selectedModel = value.Code
+					break
+				}
+			}
+
+			initLangs()
+		},
 	})
 }
 
