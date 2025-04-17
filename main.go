@@ -69,8 +69,6 @@ func notify(Notify *Notify) {
 }
 
 func handler(data string) {
-	fmt.Printf("Пробуем перевести: %s", data)
-
 	var translatedText, err = Generate(data)
 	if err != nil {
 		notify(&Notify{
@@ -128,13 +126,13 @@ func formatString(str string) string {
 	str = strings.Replace(str, "\r", "", -1)
 
 	for {
-		var findTabSpaces = strings.Index(str, "\n\n")
+		var findTabSpaces = strings.Index(str, "\n\n\n")
 
 		if findTabSpaces == -1 {
 			break
 		}
 
-		str = strings.Replace(str, "\n\n", "\n", -1)
+		str = strings.Replace(str, "\n\n\n", "\n\n", -1)
 	}
 
 	return str
