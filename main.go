@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/emersion/go-autostart"
 	"github.com/gen2brain/beeep"
 	"github.com/getlantern/systray"
 	"github.com/getlantern/systray/example/icon"
@@ -10,6 +11,7 @@ import (
 	"golang.design/x/hotkey"
 	"golang.design/x/hotkey/mainthread"
 	"log"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -198,7 +200,6 @@ Translate into:
 If the language of the given text is ` + defaultNativeLanguage + ` → translate to English.
 Otherwise, translate to ` + defaultNativeLanguage + `.
 `
-	log.Println(prompt)
 }
 
 func initLanguageSelector() {
@@ -243,12 +244,34 @@ func startClipboardWatcher() {
 	}
 }
 
+func initAutostart() {
+	var executable, err = os.Executable()
+	if err != nil {
+		notify(&Notify{
+			Message: fmt.Sprintf("Не удалось получить путь к исполняемому файлу: %s", err),
+			Icon:    "failed",
+		})
+
+		return
+	}
+
+	var app = &autostart.App{
+		Name:        "Fast-Translator",
+		DisplayName: "Fast-Translator",
+		Exec:        []string{"sh", "-c", executable},
+	}
+
+	app.Enable()
+}
+
 func start() {
 	systray.SetIcon(icon.Data)
 	systray.SetTitle("Fast-Translator")
 	systray.SetTooltip("Fast-Translator")
 
+	initAutostart()
 	initLanguageSelector()
+	systray.AddSeparator()
 	initExitButton()
 
 	startClipboard()
