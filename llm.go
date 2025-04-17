@@ -1,22 +1,18 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io"
 	"math"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 	"unicode/utf8"
 )
 
-func encode(text string) string {
-	return base64.StdEncoding.EncodeToString([]byte(text))
-}
-
 func Generate(text string) (string, error) {
-	var apiURLConstruct = fmt.Sprintf("%s/%s?system=%s&model=%s&json=false", apiURL, encode(text), encode(prompt), model)
+	var apiURLConstruct = fmt.Sprintf("%s/%s?system=%s&model=%s&json=false", apiURL, url.PathEscape(text), url.PathEscape(prompt), model)
 	var req, err = http.NewRequest("GET", apiURLConstruct, nil)
 	if err != nil {
 		return "", fmt.Errorf("не удалось сделать запрос: %w", err)

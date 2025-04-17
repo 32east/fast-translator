@@ -17,7 +17,7 @@ import (
 )
 
 // https://text.pollinations.ai/models
-const model = "llama"
+const model = "openai"
 const nativeLanguage = "Русский"
 const packetNotFound = "exec: \"xclip\": executable file not found in $PATH"
 const apiURL = "https://text.pollinations.ai"
