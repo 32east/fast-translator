@@ -1,7 +1,7 @@
 Быстрый переводчик на основе языковых моделей llama, chatgpt и других (https://text.pollinations.ai/models).
 
 ## Как же заставить данное творение работать?
-1. Компилим командой ``go build -o build/fast-translator -ldflags "-s -w"``.
+1. Компилим командой ``go build -o build/fast-translator -ldflags "-s -w" -gcflags=all="-l -B"``.
 2. Запускаем ``sudo build/fast-translator``. Права администратора нужны, для того, чтобы автоматически установился [XClip](https://github.com/astrand/xclip).
 3. Выделяем любой текст, который хотим перевести.
 4. Нажимаем комбинацию клавиш: Ctrl + Shift + C.
