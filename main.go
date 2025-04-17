@@ -10,7 +10,6 @@ import (
 	"golang.design/x/clipboard"
 	"golang.design/x/hotkey"
 	"golang.design/x/hotkey/mainthread"
-	"log"
 	"os"
 	"os/exec"
 	"runtime"
@@ -70,7 +69,7 @@ func notify(Notify *Notify) {
 }
 
 func handler(data string) {
-	log.Printf("Пробуем перевести: %s", data)
+	fmt.Printf("Пробуем перевести: %s", data)
 
 	var translatedText, err = Generate(data)
 	if err != nil {
@@ -96,11 +95,11 @@ func checkForXClip() {
 
 	var output = exec.Command("xclip").Run()
 	if output != nil && output.Error() == packetNotFound {
-		log.Println("Пакет XClip не найден, пытаемся установить...")
+		fmt.Println("Пакет XClip не найден, пытаемся установить...")
 
 		output = exec.Command("apt", "install", "xclip").Run()
 		if output != nil {
-			log.Fatalf("Ошибка установки XClip: %s", output.Error())
+			panic(output)
 		}
 	}
 }
