@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 )
 
 const packetNotFound = "exec: \"xclip\": executable file not found in $PATH"
@@ -194,13 +195,16 @@ func initLangs() {
 		selectedLanguage = defaultLanguage
 	}
 
-	prompt = fmt.Sprintf(`
-You only output the translation—nothing else.
-Preserve every character, style, and symbol.
-Detect the source language code:
-  • If it is "%[1]s", translate to English ("en").
-  • Otherwise, translate into "%[1]s".
-`, selectedLanguage)
+	prompt = `
+You are not supposed to write anything except for the translation of the given text.
+Preserve absolutely all characters, letter writing style, symbols, font, punctuation marks, letters - EVERYTHING must be preserved!
+That is, if a person writes only in lowercase letters, then preserve the style.
+If there is an unintelligible symbol - skip it.
+Translate into:
+
+If the language of the given text is ` + selectedLanguage + ` → translate to English.
+Otherwise, translate to ` + selectedLanguage + `.
+`
 }
 
 type InputCheckboxes struct {
@@ -256,6 +260,9 @@ func initLanguageSelector() {
 				break
 			}
 		}
+	} else {
+		time.Sleep(time.Second * 5)
+		initLanguageSelector()
 	}
 
 	createCheckboxes(&InputCheckboxes{
@@ -303,8 +310,13 @@ func initExitButton() {
 func startClipboardWatcher() {
 	var clipboardChannel = clipboard.Watch(context.Background(), clipboard.FmtText)
 	for {
-		lastClipboard = <-clipboardChannel
+		var ok bool
+		lastClipboard, ok = <-clipboardChannel
+		if !ok {
+			break
+		}
 	}
+	startClipboardWatcher()
 }
 
 func initAutostart() {

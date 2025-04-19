@@ -13,7 +13,7 @@ import (
 )
 
 // https://text.pollinations.ai/models
-const defaultModel = "llama"
+const defaultModel = "openai"
 const apiURL = "https://text.pollinations.ai"
 
 type AvailableModel struct {
