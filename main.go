@@ -263,6 +263,7 @@ func initLanguageSelector() {
 	} else {
 		time.Sleep(time.Second * 5)
 		initLanguageSelector()
+		return
 	}
 
 	createCheckboxes(&InputCheckboxes{
