@@ -83,7 +83,7 @@ func GetAvailableModels() ([]AvailableModel, error) {
 }
 
 func Generate(text string) (string, error) {
-	var apiURLConstruct = fmt.Sprintf("%s/%s?system=%s&defaultModel=%s&json=false", apiURL, url.PathEscape(text), url.PathEscape(prompt), defaultModel)
+	var apiURLConstruct = fmt.Sprintf("%s/%s?system=%s&defaultModel=%s&json=false", apiURL, url.PathEscape(text), url.PathEscape(prompt), selectedModel)
 	var minTime = math.Max(float64(utf8.RuneCountInString(text)/23), 5)
 	var str, err = newRequest(&Request{
 		URL:        apiURLConstruct,

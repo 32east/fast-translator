@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fast-translator/cookie"
 	"fmt"
 	"github.com/emersion/go-autostart"
 	"github.com/gen2brain/beeep"
@@ -70,7 +71,7 @@ func notify(Notify *Notify) {
 	}
 
 	beeep.Notify(
-		"Переводчик",
+		fmt.Sprintf("Переводчик (%s)", selectedModel),
 		Notify.Message,
 		iconPath,
 	)
@@ -192,7 +193,19 @@ func startClipboard() {
 
 func initLangs() {
 	if selectedLanguage == "" {
-		selectedLanguage = defaultLanguage
+		var cookieLanguage = cookie.Get("selected_language")
+		if cookieLanguage == nil {
+			selectedLanguage = defaultLanguage
+		} else {
+			selectedLanguage = cookieLanguage.(string)
+		}
+	}
+
+	var cookieModel = cookie.Get("selected_model")
+	if cookieModel == nil {
+		selectedModel = defaultModel
+	} else {
+		selectedModel = cookieModel.(string)
 	}
 
 	prompt = `
@@ -266,12 +279,18 @@ func initLanguageSelector() {
 		return
 	}
 
+	var cookieModel = cookie.Get("selected_model")
+	if cookieModel == nil {
+		cookieModel = defaultModel
+	}
+
 	createCheckboxes(&InputCheckboxes{
 		Array:           availableModels,
 		CheckboxesArray: modelsCheckBoxes,
-		DefaultVariable: defaultModel,
+		DefaultVariable: cookieModel.(string),
 		OnCheck: func(model string) {
 			selectedModel = model
+			cookie.Set("selected_model", model)
 		},
 		Variable: &selectedModel,
 	})
@@ -283,14 +302,20 @@ func initLanguageSelector() {
 		arrLanguages = append(arrLanguages, normalName.Name)
 	}
 
+	var cookieLanguage = cookie.Get("selected_language")
+	if cookieLanguage == nil {
+		cookieLanguage = defaultLanguage
+	}
+
 	createCheckboxes(&InputCheckboxes{
 		Array:           arrLanguages,
 		CheckboxesArray: languageCheckBoxes,
-		DefaultVariable: defaultLanguage,
+		DefaultVariable: cookieLanguage.(string),
 		OnCheck: func(language string) {
 			for _, value := range Languages {
 				if value.Name == language {
-					selectedModel = value.Code
+					selectedLanguage = value.Code
+					cookie.Set("selected_language", value.Name)
 					break
 				}
 			}
@@ -310,6 +335,7 @@ func initExitButton() {
 
 func startClipboardWatcher() {
 	var clipboardChannel = clipboard.Watch(context.Background(), clipboard.FmtText)
+
 	for {
 		var ok bool
 		lastClipboard, ok = <-clipboardChannel
@@ -337,10 +363,17 @@ func initAutostart() {
 		Exec:        []string{"sh", "-c", executable},
 	}
 
+	if app == nil {
+		return
+	}
+
 	app.Enable()
 }
 
 func start() {
+	cookie.Initialize()
+	initLangs()
+
 	systray.SetIcon(icon.Data)
 	systray.SetTitle("Fast-Translator")
 	systray.SetTooltip("Fast-Translator")
@@ -362,7 +395,6 @@ func start() {
 
 func init() {
 	runtime.GOMAXPROCS(1)
-	initLangs()
 }
 
 func main() {
