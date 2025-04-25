@@ -1,14 +1,12 @@
 package main
 
 import (
-	"context"
 	"fast-translator/cookie"
 	"fmt"
-	"github.com/emersion/go-autostart"
 	"github.com/gen2brain/beeep"
 	"github.com/getlantern/systray"
 	"github.com/getlantern/systray/example/icon"
-	"golang.design/x/clipboard"
+	"github.com/jimbertools/go-autostart"
 	"golang.design/x/hotkey"
 	"golang.design/x/hotkey/mainthread"
 	"golang.org/x/text/language"
@@ -26,37 +24,46 @@ var _hotkey = hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hot
 var selectedLanguage, selectedModel, prompt string
 var languageCheckBoxes []*systray.MenuItem
 var modelsCheckBoxes []*systray.MenuItem
-var lastClipboard []byte
 
 type Language struct {
 	Code string `json:"code"`
 	Name string `json:"name"`
 }
 
+type InputCheckboxes struct {
+	Array           []string
+	CheckboxesArray []*systray.MenuItem
+	DefaultVariable string
+	Variable        *string
+	OnCheck         func(variable string)
+}
+
 var s = display.Russian.Languages()
 var defaultLanguage = s.Name(language.MustParse("ru_RU"))
 
+func n(str string) string { return s.Name(language.MustParse(str)) }
+
 var Languages = []Language{
-	{Code: "en_US", Name: s.Name(language.MustParse("en_US"))}, // Английский
-	{Code: "es_ES", Name: s.Name(language.MustParse("es_ES"))}, // Испанский
-	{Code: "zh_CN", Name: s.Name(language.MustParse("zh_CN"))}, // Китайский (упрощённый)
-	{Code: "fr_FR", Name: s.Name(language.MustParse("fr_FR"))}, // Французский
-	{Code: "de_DE", Name: s.Name(language.MustParse("de_DE"))}, // Немецкий
-	{Code: "ru_RU", Name: s.Name(language.MustParse("ru_RU"))}, // Русский
-	{Code: "pt_PT", Name: s.Name(language.MustParse("pt_PT"))}, // Португальский
-	{Code: "ar_SA", Name: s.Name(language.MustParse("ar_SA"))}, // Арабский (Саудовская Аравия)
-	{Code: "ja_JP", Name: s.Name(language.MustParse("ja_JP"))}, // Японский
-	{Code: "hi_IN", Name: s.Name(language.MustParse("hi_IN"))}, // Хинди
-	{Code: "ko_KR", Name: s.Name(language.MustParse("ko_KR"))}, // Корейский
-	{Code: "it_IT", Name: s.Name(language.MustParse("it_IT"))}, // Итальянский
-	{Code: "tr_TR", Name: s.Name(language.MustParse("tr_TR"))}, // Турецкий
-	{Code: "nl_NL", Name: s.Name(language.MustParse("nl_NL"))}, // Голландский
-	{Code: "pl_PL", Name: s.Name(language.MustParse("pl_PL"))}, // Польский
-	{Code: "uk_UA", Name: s.Name(language.MustParse("uk_UA"))}, // Украинский
-	{Code: "vi_VN", Name: s.Name(language.MustParse("vi_VN"))}, // Вьетнамский
-	{Code: "th_TH", Name: s.Name(language.MustParse("th_TH"))}, // Тайский
-	{Code: "he_IL", Name: s.Name(language.MustParse("he_IL"))}, // Иврит
-	{Code: "id_ID", Name: s.Name(language.MustParse("id_ID"))}, // Индонезийский
+	{Code: "en_US", Name: n("en_US")}, // Английский
+	{Code: "es_ES", Name: n("es_ES")}, // Испанский
+	{Code: "zh_CN", Name: n("zh_CN")}, // Китайский (упрощённый)
+	{Code: "fr_FR", Name: n("fr_FR")}, // Французский
+	{Code: "de_DE", Name: n("de_DE")}, // Немецкий
+	{Code: "ru_RU", Name: n("ru_RU")}, // Русский
+	{Code: "pt_PT", Name: n("pt_PT")}, // Португальский
+	{Code: "ar_SA", Name: n("ar_SA")}, // Арабский (Саудовская Аравия)
+	{Code: "ja_JP", Name: n("ja_JP")}, // Японский
+	{Code: "hi_IN", Name: n("hi_IN")}, // Хинди
+	{Code: "ko_KR", Name: n("ko_KR")}, // Корейский
+	{Code: "it_IT", Name: n("it_IT")}, // Итальянский
+	{Code: "tr_TR", Name: n("tr_TR")}, // Турецкий
+	{Code: "nl_NL", Name: n("nl_NL")}, // Голландский
+	{Code: "pl_PL", Name: n("pl_PL")}, // Польский
+	{Code: "uk_UA", Name: n("uk_UA")}, // Украинский
+	{Code: "vi_VN", Name: n("vi_VN")}, // Вьетнамский
+	{Code: "th_TH", Name: n("th_TH")}, // Тайский
+	{Code: "he_IL", Name: n("he_IL")}, // Иврит
+	{Code: "id_ID", Name: n("id_ID")}, // Индонезийский
 }
 
 type Notify struct {
@@ -88,34 +95,28 @@ func handler(data string) {
 		return
 	}
 
-	clipboard.Write(clipboard.FmtText, []byte(translatedText))
+	if err := pasteToClipboard(translatedText); err != nil {
+		notify(&Notify{
+			Message: fmt.Sprintf("Произошла ошибка вставки в буфер обмена: %s", err.Error()),
+			Icon:    "failed",
+		})
+
+		return
+	}
+
 	notify(&Notify{
 		Message: "Переведённый текст скопирован в буфер обмена:\n" + translatedText,
 		Icon:    "success",
 	})
 }
 
-func checkForXClip() {
-	if runtime.GOOS == "windows" {
-		return
-	}
-
-	var output = exec.Command("xclip").Run()
-	if output != nil && output.Error() == packetNotFound {
-		fmt.Println("Пакет XClip не найден, пытаемся установить...")
-
-		output = exec.Command("apt", "install", "xclip").Run()
-		if output != nil {
-			panic(output)
-		}
-	}
+func pasteToClipboard(text string) error {
+	var cmd = exec.Command("xclip", "-selection", "clipboard")
+	cmd.Stdin = strings.NewReader(text)
+	return cmd.Run()
 }
 
 func checkClipboard(selection string) (string, error) {
-	if runtime.GOOS == "windows" {
-		return "", nil
-	}
-
 	var o, oErr = exec.Command("xclip", "-o", "-selection", selection).Output()
 	if oErr != nil {
 		notify(&Notify{
@@ -148,8 +149,7 @@ func formatString(str string) string {
 }
 
 func startKeyboard() {
-	var err = _hotkey.Register()
-	if err != nil {
+	if err := _hotkey.Register(); err != nil {
 		notify(&Notify{
 			Message: fmt.Sprintf("Не удалось зарегистрировать ХотКей: %v", err),
 			Icon:    "failed",
@@ -159,35 +159,18 @@ func startKeyboard() {
 
 	for {
 		<-_hotkey.Keydown()
+
 		var str, strErr = checkClipboard("primary")
 		if strErr != nil {
-			return
-		}
-
-		if strings.TrimSpace(str) == "" {
-			str = string(lastClipboard)
-
-			if strings.TrimSpace(str) == "" {
-				notify(&Notify{
-					Message: "В буфере обмена - пусто.",
-					Icon:    "failed",
-				})
-			}
+			notify(&Notify{
+				Message: "В буфере обмена - пусто.",
+				Icon:    "failed",
+			})
 
 			continue
 		}
 
-		str = formatString(str)
-		handler(str)
-	}
-}
-
-func startClipboard() {
-	if err := clipboard.Init(); clipboard.Init() != nil {
-		notify(&Notify{
-			Message: fmt.Sprintf("Не удалось инициализировать сервис буфера обмена: %s", err),
-			Icon:    "failed",
-		})
+		handler(formatString(str))
 	}
 }
 
@@ -217,14 +200,6 @@ Output only the translated text—do NOT add any explanations, comments or marku
 Preserve absolutely all characters, casing, punctuation, spaces, line breaks and symbols exactly as in the original.
 If you encounter any unintelligible or garbled symbol, include it unchanged in the output.
 `, selectedLanguage, selectedLanguage, selectedLanguage)
-}
-
-type InputCheckboxes struct {
-	Array           []string
-	CheckboxesArray []*systray.MenuItem
-	DefaultVariable string
-	Variable        *string
-	OnCheck         func(variable string)
 }
 
 func createCheckboxes(input *InputCheckboxes) {
@@ -258,7 +233,11 @@ func initLanguageSelector() {
 	var availableModels []string
 	var count = 0
 
-	if err == nil {
+	if err != nil {
+		time.Sleep(time.Second * 5)
+		initLanguageSelector()
+		return
+	} else {
 		for _, model := range mdls {
 			for _, input := range model.OutputModalities {
 				if input == "text" {
@@ -272,10 +251,6 @@ func initLanguageSelector() {
 				break
 			}
 		}
-	} else {
-		time.Sleep(time.Second * 5)
-		initLanguageSelector()
-		return
 	}
 
 	var cookieModel = cookie.Get("selected_model")
@@ -332,19 +307,6 @@ func initExitButton() {
 	}()
 }
 
-func startClipboardWatcher() {
-	var clipboardChannel = clipboard.Watch(context.Background(), clipboard.FmtText)
-
-	for {
-		var ok bool
-		lastClipboard, ok = <-clipboardChannel
-		if !ok {
-			break
-		}
-	}
-	startClipboardWatcher()
-}
-
 func initAutostart() {
 	var executable, err = os.Executable()
 	if err != nil {
@@ -360,10 +322,6 @@ func initAutostart() {
 		Name:        "Fast-Translator",
 		DisplayName: "Fast-Translator",
 		Exec:        []string{"sh", "-c", executable},
-	}
-
-	if app == nil {
-		return
 	}
 
 	app.Enable()
@@ -382,13 +340,15 @@ func start() {
 	systray.AddSeparator()
 	initExitButton()
 
-	startClipboard()
+	if _, xclipErr := checkClipboard("primary"); xclipErr != nil {
+		notify(&Notify{
+			Message: fmt.Sprintf("Похоже, что XClip не установлен: %s", xclipErr.Error()),
+			Icon:    "failed",
+		})
 
-	if runtime.GOOS != "windows" {
-		checkForXClip()
+		os.Exit(0)
 	}
 
-	go startClipboardWatcher()
 	go mainthread.Init(startKeyboard)
 }
 

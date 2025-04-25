@@ -60,8 +60,8 @@ func newRequest(request *Request) ([]byte, error) {
 	if strErr != nil {
 		return nil, strErr
 	}
-	return str, nil
 
+	return str, nil
 }
 
 func GetAvailableModels() ([]AvailableModel, error) {
