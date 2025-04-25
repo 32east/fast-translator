@@ -193,31 +193,30 @@ func startClipboard() {
 
 func initLangs() {
 	if selectedLanguage == "" {
-		var cookieLanguage = cookie.Get("selected_language")
-		if cookieLanguage == nil {
-			selectedLanguage = defaultLanguage
+		if cookieLang := cookie.Get("selected_language"); cookieLang != nil {
+			selectedLanguage = cookieLang.(string)
 		} else {
-			selectedLanguage = cookieLanguage.(string)
+			selectedLanguage = defaultLanguage
 		}
 	}
 
-	var cookieModel = cookie.Get("selected_model")
-	if cookieModel == nil {
-		selectedModel = defaultModel
-	} else {
+	if cookieModel := cookie.Get("selected_model"); cookieModel != nil {
 		selectedModel = cookieModel.(string)
+	} else {
+		selectedModel = defaultModel
 	}
 
-	prompt = `
-You are not supposed to write anything except for the translation of the given text.
-Preserve absolutely all characters, letter writing style, symbols, font, punctuation marks, letters - EVERYTHING must be preserved!
-That is, if a person writes only in lowercase letters, then preserve the style.
-If there is an unintelligible symbol - skip it.
-Translate into:
+	prompt = fmt.Sprintf(`
+You are a translation assistant. Your task is to translate the input text in either direction between %s and English:
 
-If the language of the given text is ` + selectedLanguage + ` → translate to English.
-Otherwise, translate to ` + selectedLanguage + `.
-`
+1. Detect the language of the input text.
+2. If it is in %s, translate it into English.
+3. Otherwise, translate it into %s.
+
+Output only the translated text—do NOT add any explanations, comments or markup.
+Preserve absolutely all characters, casing, punctuation, spaces, line breaks and symbols exactly as in the original.
+If you encounter any unintelligible or garbled symbol, include it unchanged in the output.
+`, selectedLanguage, selectedLanguage, selectedLanguage)
 }
 
 type InputCheckboxes struct {
