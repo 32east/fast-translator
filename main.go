@@ -3,10 +3,10 @@ package main
 import (
 	"fast-translator/cookie"
 	"fmt"
+	"github.com/emersion/go-autostart"
 	"github.com/gen2brain/beeep"
 	"github.com/getlantern/systray"
 	"github.com/getlantern/systray/example/icon"
-	"github.com/jimbertools/go-autostart"
 	"golang.design/x/hotkey"
 	"golang.design/x/hotkey/mainthread"
 	"golang.org/x/text/language"

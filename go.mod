@@ -3,9 +3,9 @@ module fast-translator
 go 1.24.1
 
 require (
+	github.com/emersion/go-autostart v0.0.0-20250403115856-34830d6457d2
 	github.com/gen2brain/beeep v0.0.0-20240516210008-9c006672e7f4
 	github.com/getlantern/systray v1.2.2
-	github.com/jimbertools/go-autostart v0.0.0-20231220124135-de97d168f1de
 	golang.design/x/hotkey v0.4.1
 	golang.org/x/text v0.22.0
 	gopkg.in/yaml.v3 v3.0.1
