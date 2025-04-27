@@ -119,11 +119,6 @@ func pasteToClipboard(text string) error {
 func checkClipboard(selection string) (string, error) {
 	var o, oErr = exec.Command("xclip", "-o", "-selection", selection).Output()
 	if oErr != nil {
-		notify(&Notify{
-			Message: fmt.Sprintf("Произошла ошибка при просмотре выделенного содержимого: %s", oErr.Error()),
-			Icon:    "failed",
-		})
-
 		return "", oErr
 	}
 
@@ -163,7 +158,7 @@ func startKeyboard() {
 		var str, strErr = checkClipboard("primary")
 		if strErr != nil {
 			notify(&Notify{
-				Message: "В буфере обмена - пусто.",
+				Message: fmt.Sprintf("Произошла ошибка при просмотре выделенного содержимого: %s", strErr.Error()),
 				Icon:    "failed",
 			})
 
@@ -340,13 +335,21 @@ func start() {
 	systray.AddSeparator()
 	initExitButton()
 
-	if _, xclipErr := checkClipboard("primary"); xclipErr != nil {
-		notify(&Notify{
-			Message: fmt.Sprintf("Похоже, что XClip не установлен: %s", xclipErr.Error()),
-			Icon:    "failed",
-		})
+	for i := 1; i <= 5; i++ {
+		if _, xclipErr := checkClipboard("primary"); xclipErr != nil {
+			if i >= 5 {
+				notify(&Notify{
+					Message: fmt.Sprintf("Похоже, что XClip не установлен: %s", xclipErr.Error()),
+					Icon:    "failed",
+				})
 
-		os.Exit(0)
+				os.Exit(0)
+			}
+
+			time.Sleep(time.Second * 5)
+		} else {
+			break
+		}
 	}
 
 	go mainthread.Init(startKeyboard)
