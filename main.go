@@ -336,7 +336,7 @@ func start() {
 	initExitButton()
 
 	for i := 1; i <= 5; i++ {
-		if _, xclipErr := checkClipboard("primary"); xclipErr != nil {
+		if _, xclipErr := exec.Command("xclip").Output(); xclipErr != nil {
 			if i >= 5 {
 				notify(&Notify{
 					Message: fmt.Sprintf("Похоже, что XClip не установлен: %s", xclipErr.Error()),
