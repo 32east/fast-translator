@@ -3,10 +3,11 @@ package main
 import (
 	"fast-translator/cookie"
 	"fmt"
-	"github.com/emersion/go-autostart"
 	"github.com/gen2brain/beeep"
 	"github.com/getlantern/systray"
 	"github.com/getlantern/systray/example/icon"
+	"github.com/jimbertools/go-autostart"
+	"golang.design/x/clipboard"
 	"golang.design/x/hotkey"
 	"golang.design/x/hotkey/mainthread"
 	"golang.org/x/text/language"
@@ -17,8 +18,6 @@ import (
 	"strings"
 	"time"
 )
-
-const packetNotFound = "exec: \"xclip\": executable file not found in $PATH"
 
 var _hotkey = hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyC)
 var selectedLanguage, selectedModel, prompt string
@@ -110,21 +109,6 @@ func handler(data string) {
 	})
 }
 
-func pasteToClipboard(text string) error {
-	var cmd = exec.Command("xclip", "-selection", "clipboard")
-	cmd.Stdin = strings.NewReader(text)
-	return cmd.Run()
-}
-
-func checkClipboard(selection string) (string, error) {
-	var o, oErr = exec.Command("xclip", "-o", "-selection", selection).Output()
-	if oErr != nil {
-		return "", oErr
-	}
-
-	return string(o), nil
-}
-
 func formatString(str string) string {
 	str = strings.Trim(str, "\n")
 	str = strings.Trim(str, " ")
@@ -166,6 +150,30 @@ func startKeyboard() {
 		}
 
 		handler(formatString(str))
+	}
+}
+
+func pasteToClipboard(text string) error {
+	if runtime.GOOS == "windows" {
+		clipboard.Write(clipboard.FmtText, []byte(text))
+		return nil
+	} else {
+		var cmd = exec.Command("xclip", "-selection", "clipboard")
+		cmd.Stdin = strings.NewReader(text)
+		return cmd.Run()
+	}
+}
+
+func checkClipboard(selection string) (string, error) {
+	if runtime.GOOS == "windows" {
+		return string(clipboard.Read(clipboard.FmtText)), nil
+	} else {
+		var o, oErr = exec.Command("xclip", "-o", "-selection", selection).Output()
+		if oErr != nil {
+			return "", oErr
+		}
+
+		return string(o), nil
 	}
 }
 
@@ -335,20 +343,22 @@ func start() {
 	systray.AddSeparator()
 	initExitButton()
 
-	for i := 1; i <= 5; i++ {
-		if _, xclipErr := exec.Command("xclip").Output(); xclipErr != nil {
-			if i >= 5 {
-				notify(&Notify{
-					Message: fmt.Sprintf("Похоже, что XClip не установлен: %s", xclipErr.Error()),
-					Icon:    "failed",
-				})
+	if runtime.GOOS == "linux" {
+		xclipInitErr := initializeXCLip()
+		if xclipInitErr != nil {
+			notify(&Notify{
+				Message: xclipInitErr.Error(),
+				Icon:    "failed",
+			})
 
-				os.Exit(0)
-			}
+			os.Exit(0)
 
-			time.Sleep(time.Second * 5)
-		} else {
-			break
+			return
+		}
+	} else {
+		err := clipboard.Init()
+		if err != nil {
+			panic(err)
 		}
 	}
 

@@ -3,9 +3,9 @@ module fast-translator
 go 1.24.1
 
 require (
-	github.com/emersion/go-autostart v0.0.0-20250403115856-34830d6457d2
 	github.com/gen2brain/beeep v0.0.0-20240516210008-9c006672e7f4
 	github.com/getlantern/systray v1.2.2
+	github.com/jimbertools/go-autostart v0.0.0-20231220124135-de97d168f1de
 	golang.design/x/hotkey v0.4.1
 	golang.org/x/text v0.22.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -24,6 +24,10 @@ require (
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/tadvi/systray v0.0.0-20190226123456-11a2b8fa57af // indirect
+	golang.design/x/clipboard v0.7.0 // indirect
 	golang.design/x/mainthread v0.3.0 // indirect
+	golang.org/x/exp v0.0.0-20190731235908-ec7cb31e5a56 // indirect
+	golang.org/x/image v0.6.0 // indirect
+	golang.org/x/mobile v0.0.0-20230301163155-e0f57694e12c // indirect
 	golang.org/x/sys v0.32.0 // indirect
 )
